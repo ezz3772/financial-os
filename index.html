@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F0EBE3;--bg2:#EAE4DB;--card:#FFFFFF;--gold-dark:#7A6228;--gold:#A8892A;
+  --gold-pill:#C8A84B;--gold-bg:#F5EDD5;--hero-top:#9E8640;--hero-bot:#6B5820;
+  --text:#1C1A16;--text-mid:#5A4E35;--text-muted:#8A7D62;--green:#4DB89A;
+  --amber:#C8A84B;--red:#C0392B;--red-bg:#FDECEA;--border:#DDD5C0;--pill-border:#D4C9A8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── AUTH ─────────────────────────────────────────────── */
+#auth-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px;}
+#auth-overlay .brand{font-family:'Playfair Display',serif;font-size:2.2rem;color:var(--text);}
+#auth-overlay .brand em{font-style:italic;color:var(--gold);}
+.auth-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px;display:flex;flex-direction:column;gap:14px;min-width:300px;max-width:340px;width:90%;}
+.auth-box label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);}
+.auth-box input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-family:'Inter',sans-serif;font-size:0.9rem;color:var(--text);outline:none;transition:border-color 0.15s;width:100%;}
+.auth-box input:focus{border-color:var(--gold);}
+.auth-btn{background:var(--gold-dark);color:#fff;border:none;border-radius:8px;padding:11px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;transition:background 0.15s;}
+.auth-btn:hover{background:var(--gold);}
+#auth-error{color:var(--red);font-size:0.78rem;text-align:center;min-height:16px;}
+#auth-msg{font-size:0.72rem;color:var(--text-muted);text-align:center;line-height:1.5;}
+
+/* ── LOADING & SYNC ───────────────────────────────────── */
+#app-loading{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:9998;flex-direction:column;gap:12px;}
+#app-loading .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#app-loading p{font-size:0.8rem;color:var(--text-muted);}
+.sync-bar{display:none;align-items:center;justify-content:center;gap:6px;padding:4px;background:var(--gold-bg);border-bottom:1px solid var(--border);font-size:0.7rem;color:var(--gold-dark);}
+.sync-bar.visible{display:flex;}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* ── TOP BAR ──────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;background:var(--bg);}
+.topbar-left{display:flex;flex-direction:column;gap:3px;}
+.topbar .brand{font-family:'Playfair Display',serif;font-size:1.75rem;line-height:1.1;color:var(--text);}
+.topbar .brand em{font-style:italic;color:var(--gold);}
+.topbar .sub{font-size:0.6rem;letter-spacing:0.11em;text-transform:uppercase;color:var(--text-muted);}
+.signout-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 11px;font-size:0.7rem;color:var(--text-muted);cursor:pointer;transition:border-color .15s,color .15s;}
+.signout-btn:hover{border-color:var(--red);color:var(--red);}
+.month-nav{display:flex;align-items:center;gap:8px;}
+.month-nav button{background:none;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--text-mid);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.month-nav button:hover{background:var(--gold-bg);}
+.month-nav .mlabel{font-family:'Playfair Display',serif;font-size:0.9rem;color:var(--gold-dark);min-width:110px;text-align:center;}
+
+/* ── PILLS ────────────────────────────────────────────── */
+.pills{display:flex;gap:8px;padding:0 20px 14px;flex-wrap:wrap;}
+.pill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--pill-border);border-radius:20px;padding:5px 13px;font-size:0.78rem;color:var(--text-mid);}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--gold-pill);}
+.pill strong{color:var(--text);font-weight:600;}
+
+/* ── HERO ─────────────────────────────────────────────── */
+.hero{margin:0 16px 20px;background:linear-gradient(160deg,var(--hero-top),var(--hero-bot));border-radius:18px;padding:24px 20px 20px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.05);}
+.hero .kpi-label{font-size:0.62rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:5px;}
+.hero .big-num{font-family:'Playfair Display',serif;font-size:2.6rem;color:#fff;line-height:1;}
+.hero .big-num span{font-size:1.2rem;vertical-align:top;margin-top:6px;display:inline-block;opacity:0.7;}
+.hero .usd{font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:4px;margin-bottom:18px;}
+/* 2x2 grid for 4 stats */
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 0;margin-bottom:14px;}
+.hero-grid .divider{border-right:1px solid rgba(255,255,255,0.15);padding-right:12px;}
+.hero-stat .val{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;}
+.hero-stat .val.green{color:var(--green);}
+.hero-stat .val.amber{color:var(--amber);}
+.hero-stat .val.white{color:#fff;}
+.hero-stat .lbl{font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-top:2px;}
+/* bottom row: debt + free money */
+.hero-bottom{display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);}
+.hero-bottom .hero-stat .val{font-size:1rem;}
+
+/* ── TABS ─────────────────────────────────────────────── */
+.tabs{display:flex;overflow-x:auto;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;}
+.tabs::-webkit-scrollbar{display:none;}
+.tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:11px 14px;font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;}
+.tabs button.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tabs button:hover:not(.active){color:var(--text-mid);}
+
+/* ── LAYOUT ───────────────────────────────────────────── */
+main{max-width:680px;margin:0 auto;padding:20px 16px 80px;}
+.panel{display:none;}
+.panel.active{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px;overflow:hidden;}
+.card-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold-dark);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bg2);}
+
+/* ── FORMS ────────────────────────────────────────────── */
+/* Two-column grid for all forms — prevents overflow */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.form-grid .span2{grid-column:1/-1;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);}
+.fg input,.fg select{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:'Inter',sans-serif;font-size:0.84rem;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+.fg input:focus,.fg select:focus{border-color:var(--gold);}
+.btn-full{width:100%;background:var(--gold-dark);color:#fff;border:none;border-radius:8px;padding:10px;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;transition:background .15s;margin-top:auto;}
+.btn-full:hover{background:var(--gold);}
+
+/* ── BUTTONS ──────────────────────────────────────────── */
+.btn{background:var(--gold-dark);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:'Inter',sans-serif;font-size:0.78rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;transition:background .15s;white-space:nowrap;flex-shrink:0;}
+.btn:hover{background:var(--gold);}
+.btn.outline{background:none;color:var(--red);border:1px solid var(--red);padding:5px 10px;font-size:0.68rem;}
+.btn.outline:hover{background:var(--red-bg);}
+.btn.sm{padding:5px 10px;font-size:0.68rem;}
+.btn.pay{background:#2D6A4F;}
+.btn.pay:hover{background:#245a42;}
+
+/* ── TABLES ───────────────────────────────────────────── */
+/* Scrollable wrapper — Remove never overflows on mobile */
+.table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;font-size:0.82rem;min-width:340px;}
+th{text-align:left;padding:7px 10px;background:var(--bg2);color:var(--text-muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:8px 10px;border-bottom:1px solid var(--bg2);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg);}
+.td-act{width:72px;text-align:right;white-space:nowrap;}
+.td-num{width:105px;white-space:nowrap;}
+.td-sm{width:80px;white-space:nowrap;}
+.td-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+
+/* ── BADGES ───────────────────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;}
+.badge.cat{background:var(--gold-bg);color:var(--gold-dark);}
+.badge.due{background:#FEF3CD;color:#7A5F00;}
+.badge.over{background:var(--red-bg);color:var(--red);}
+.badge.paid-b{background:#EAF4EF;color:#2D6A4F;}
+
+/* ── PROGRESS ─────────────────────────────────────────── */
+.prog-lbl{display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;}
+.prog-bar{height:6px;background:var(--bg2);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;transition:width .4s;}
+
+/* ── DEBT ITEMS ───────────────────────────────────────── */
+.debt-item{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
+.debt-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;}
+.debt-name{font-weight:600;font-size:0.86rem;color:var(--gold-dark);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.debt-btns{display:flex;gap:6px;flex-shrink:0;}
+.debt-meta{font-size:0.73rem;color:var(--text-muted);margin-bottom:8px;line-height:1.7;word-break:break-word;}
+
+/* ── CATEGORY BARS ────────────────────────────────────── */
+.cat-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.cat-lbl{width:110px;font-size:0.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.cat-bar-w{flex:1;height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;}
+.cat-bar-f{height:100%;border-radius:4px;background:var(--gold);}
+.cat-amt{width:90px;text-align:right;font-size:0.78rem;color:var(--text-muted);flex-shrink:0;}
+
+/* ── ALERTS ───────────────────────────────────────────── */
+.alert{padding:9px 13px;border-radius:8px;font-size:0.78rem;margin-bottom:9px;border-left:3px solid;}
+.alert.warn{background:#FEF9E7;color:#7A5F00;border-color:#E8C22B;}
+.alert.err{background:var(--red-bg);color:var(--red);border-color:var(--red);}
+.alert.ok{background:#EAF4EF;color:#2D6A4F;border-color:#2D6A4F;}
+
+/* ── SAVING CARD ──────────────────────────────────────── */
+.save-card{background:linear-gradient(135deg,#f0f7f4,#e6f2ee);border:1px solid rgba(45,106,74,0.25);border-radius:12px;padding:16px;margin-bottom:14px;}
+.save-card-title{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:#2D6A4F;font-weight:600;margin-bottom:12px;}
+.save-nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+.save-num-box{background:#fff;border:1px solid rgba(45,106,74,0.2);border-radius:8px;padding:10px;text-align:center;}
+.save-num-val{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;}
+.save-num-lbl{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-top:2px;}
+
+/* ── MISC ─────────────────────────────────────────────── */
+.empty{text-align:center;color:var(--text-muted);font-size:0.8rem;padding:20px 0;}
+.pos{color:#2D6A4F;font-weight:600;}
+.neg{color:var(--red);font-weight:600;}
+.amb{color:var(--gold-dark);font-weight:600;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+@media(max-width:480px){
+  .summary-grid{grid-template-columns:1fr;}
+  .save-nums{grid-template-columns:1fr 1fr;}
+  .hero .big-num{font-size:2.2rem;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid .span2{grid-column:1;}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-overlay">
+  <div class="brand">My<em>Finance</em></div>
+  <div class="auth-box">
+    <div><label>Email</label><input type="email" id="auth-email" placeholder="your@email.com" style="margin-top:4px"></div>
+    <div><label>Password</label><input type="password" id="auth-pass" placeholder="••••••••" style="margin-top:4px"></div>
+    <button class="auth-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div id="auth-error"></div>
+    <div id="auth-msg">First time? Enter any email &amp; password to create your account.</div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="app-loading"><div class="spinner"></div><p>Loading your data…</p></div>
+
+<!-- SYNC -->
+<div class="sync-bar" id="sync-bar"><span class="sync-dot"></span> Saving…</div>
+
+<!-- APP -->
+<div id="app-wrapper" style="display:none">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="brand">My<em>Finance</em></div>
+    <div class="sub">Monthly OS &middot; EGP</div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+    <button class="signout-btn" onclick="doSignOut()">Sign out</button>
+    <div class="month-nav">
+      <button id="prevM">&#8249;</button>
+      <div class="mlabel" id="mLabel"></div>
+      <button id="nextM">&#8250;</button>
+    </div>
+  </div>
+</div>
+
+<!-- PILLS -->
+<div class="pills">
+  <div class="pill"><span class="dot"></span> Income <strong id="pill-income">0 EGP</strong></div>
+  <div class="pill"><span class="dot" style="background:#C0392B"></span> Spent <strong id="pill-spent">0 EGP</strong></div>
+  <div class="pill"><span class="dot" style="background:#2D6A4F"></span> Left <strong id="pill-left">0 EGP</strong></div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="kpi-label">Available Balance</div>
+  <div class="big-num"><span>EGP </span><span id="hero-avail">0</span></div>
+  <div class="usd" id="hero-pct"></div>
+  <div class="hero-grid">
+    <div class="hero-stat divider">
+      <div class="val amber" id="h-fixed">0</div><div class="lbl">Fixed</div>
+    </div>
+    <div class="hero-stat" style="padding-left:14px">
+      <div class="val green" id="h-expenses">0</div><div class="lbl">Variable</div>
+    </div>
+    <div class="hero-stat divider">
+      <div class="val white" id="h-income">0</div><div class="lbl">Income</div>
+    </div>
+    <div class="hero-stat" style="padding-left:14px">
+      <div class="val green" id="h-saving">—</div><div class="lbl">Saving Target</div>
+    </div>
+  </div>
+  <div class="hero-bottom">
+    <div class="hero-stat"><div class="val amber" id="h-debt">0</div><div class="lbl">Total Debt</div></div>
+    <div class="hero-stat" style="text-align:right"><div class="val green" id="h-free">0</div><div class="lbl">Free Money</div></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="active" data-tab="dashboard">Dashboard</button>
+  <button data-tab="income">Income</button>
+  <button data-tab="fixed">Fixed</button>
+  <button data-tab="expenses">Expenses</button>
+  <button data-tab="debts">Debts</button>
+  <button data-tab="savings">Savings</button>
+  <button data-tab="categories">Categories</button>
+  <button data-tab="summary">Summary</button>
+</div>
+
+<main>
+
+<!-- DASHBOARD -->
+<div class="panel active" id="tab-dashboard">
+  <div id="dash-alerts" style="margin-top:4px"></div>
+  <div id="dash-save-snap"></div>
+  <div class="card" style="margin-top:10px">
+    <div class="card-title">Spending by Category</div>
+    <div id="dash-cats"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Month Progress</div>
+    <div id="dash-bar"></div>
+  </div>
+</div>
+
+<!-- INCOME -->
+<div class="panel" id="tab-income">
+  <div class="card">
+    <div class="card-title">Add Income Source</div>
+    <div class="form-grid">
+      <div class="fg span2"><label>Source Name</label><input id="inc-name" placeholder="e.g. Salary - Aria"></div>
+      <div class="fg"><label>Amount (EGP)</label><input type="number" id="inc-amount" placeholder="0"></div>
+      <div class="fg"><label>Type</label>
+        <select id="inc-type"><option>Salary</option><option>Bonus</option><option>Freelance</option><option>Refund</option><option>Other</option></select>
+      </div>
+      <div class="fg span2"><label style="visibility:hidden">x</label><button class="btn-full" onclick="addIncome()">Add Income</button></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Source</th><th class="td-sm">Type</th><th class="td-num">Amount</th><th class="td-act"></th></tr></thead>
+        <tbody id="income-tbody"></tbody>
+      </table>
+    </div>
+    <div id="income-empty" class="empty">No income logged for this month.</div>
+  </div>
+</div>
+
+<!-- FIXED -->
+<div class="panel" id="tab-fixed">
+  <div class="card">
+    <div class="card-title">Fixed Monthly Commitments</div>
+    <p style="font-size:0.76rem;color:var(--text-muted);margin-bottom:14px">Recurring obligations deducted every month.</p>
+    <div class="form-grid">
+      <div class="fg span2"><label>Name</label><input id="fix-name" placeholder="Rent, Installment..."></div>
+      <div class="fg"><label>Amount (EGP)</label><input type="number" id="fix-amount" placeholder="0"></div>
+      <div class="fg"><label>Due Day</label><input type="number" id="fix-due" placeholder="1–31" min="1" max="31"></div>
+      <div class="fg"><label>Category</label><select id="fix-cat"></select></div>
+      <div class="fg"><label style="visibility:hidden">x</label><button class="btn-full" onclick="addFixed()">Add</button></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th class="td-sm">Category</th><th class="td-sm">Due</th><th class="td-num">Amount</th><th class="td-act"></th></tr></thead>
+        <tbody id="fixed-tbody"></tbody>
+      </table>
+    </div>
+    <div id="fixed-empty" class="empty">No fixed commitments added.</div>
+  </div>
+</div>
+
+<!-- EXPENSES -->
+<div class="panel" id="tab-expenses">
+  <div class="card">
+    <div class="card-title">Log Expense</div>
+    <div class="form-grid">
+      <div class="fg span2"><label>Description</label><input id="exp-desc" placeholder="What was it?"></div>
+      <div class="fg"><label>Amount (EGP)</label><input type="number" id="exp-amount" placeholder="0"></div>
+      <div class="fg"><label>Category</label><select id="exp-cat"></select></div>
+      <div class="fg"><label>Date</label><input type="date" id="exp-date"></div>
+      <div class="fg"><label style="visibility:hidden">x</label><button class="btn-full" onclick="addExpense()">Add</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin:0;padding:0;border:none">Expense Log</div>
+      <span id="exp-total-lbl" style="font-size:0.78rem;color:var(--text-muted)"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th class="td-sm">Date</th><th>Description</th><th class="td-sm">Category</th><th class="td-num">Amount</th><th class="td-act"></th></tr></thead>
+        <tbody id="expense-tbody"></tbody>
+      </table>
+    </div>
+    <div id="expense-empty" class="empty">No expenses logged this month.</div>
+  </div>
+</div>
+
+<!-- DEBTS -->
+<div class="panel" id="tab-debts">
+  <div class="card">
+    <div class="card-title">Add Debt</div>
+    <div class="form-grid">
+      <div class="fg span2"><label>Creditor / Name</label><input id="debt-name" placeholder="Bank, Person..."></div>
+      <div class="fg"><label>Total (EGP)</label><input type="number" id="debt-total" placeholder="0"></div>
+      <div class="fg"><label>Already Paid</label><input type="number" id="debt-paid-inp" placeholder="0"></div>
+      <div class="fg"><label>Monthly Payment</label><input type="number" id="debt-monthly" placeholder="0"></div>
+      <div class="fg"><label>Due Date</label><input type="date" id="debt-due"></div>
+      <div class="fg span2"><label style="visibility:hidden">x</label><button class="btn-full" onclick="addDebt()">Add Debt</button></div>
+    </div>
+  </div>
+  <div id="debt-list"></div>
+  <div id="debt-empty" class="empty">No debts tracked.</div>
+</div>
+
+<!-- SAVINGS -->
+<div class="panel" id="tab-savings">
+  <div class="card">
+    <div class="card-title">Monthly Saving Target</div>
+    <p style="font-size:0.76rem;color:var(--text-muted);margin-bottom:14px">Set how much you want to save this month from your remaining balance.</p>
+    <div class="form-grid">
+      <div class="fg span2"><label>Target Amount (EGP)</label><input type="number" id="save-target-inp" placeholder="0"></div>
+      <div class="fg span2"><button class="btn-full" onclick="saveSavingTarget()">Set Target</button></div>
+    </div>
+    <div class="save-nums" id="save-nums"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Saving History</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Month</th><th class="td-num">Target</th><th class="td-num">Actual</th><th class="td-sm">Status</th></tr></thead>
+        <tbody id="save-history-tbody"></tbody>
+      </table>
+    </div>
+    <div id="save-history-empty" class="empty">No saving targets set yet.</div>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="panel" id="tab-categories">
+  <div class="card">
+    <div class="card-title">Manage Categories</div>
+    <div class="form-grid">
+      <div class="fg span2"><label>Category Name</label><input id="cat-inp" placeholder="e.g. Groceries..."></div>
+      <div class="fg span2"><button class="btn-full" onclick="addCat()">Add Category</button></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Category</th><th class="td-sm">Entries</th><th class="td-act"></th></tr></thead>
+        <tbody id="cat-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="panel" id="tab-summary">
+  <div class="card">
+    <div class="card-title">Monthly Summary</div>
+    <div class="summary-grid" id="sum-grid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Saving Overview</div>
+    <div id="sum-saving"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Debt Overview</div>
+    <div id="sum-debts"></div>
+  </div>
+</div>
+
+</main>
+</div><!-- /app-wrapper -->
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         signOut, onAuthStateChanged, setPersistence, browserSessionPersistence }
+  from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc }
+  from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyAqdtuKlSZbx-H3lEnDqxC6Jfz0u0XrtY8",
+  authDomain:        "financial-tracker-os.firebaseapp.com",
+  projectId:         "financial-tracker-os",
+  storageBucket:     "financial-tracker-os.firebasestorage.app",
+  messagingSenderId: "624077180728",
+  appId:             "1:624077180728:web:bb67e1a0e69290b4747bcd",
+  measurementId:     "G-ZMFSFW65FL"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── CONSTANTS ────────────────────────────────────────────
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const DEF_CATS = ['Housing','Food','Transport','Health','Education',
+                  'Entertainment','Savings','Utilities','Clothing','Other'];
+
+let cy = new Date().getFullYear(), cm = new Date().getMonth();
+let currentUser = null;
+let monthCache  = {};   // { '2025-06': {income,fixed,expenses} }
+let globalCache = { debts:[], cats:[], savingTargets:{} };
+
+// ── HELPERS ──────────────────────────────────────────────
+const mkey  = ()  => `${cy}-${String(cm+1).padStart(2,'0')}`;
+const uid   = ()  => Math.random().toString(36).slice(2,9);
+const fmt   = n   => Number(n).toLocaleString('en-EG',{minimumFractionDigits:0,maximumFractionDigits:0})+' EGP';
+const pct   = (a,b) => b ? Math.min(100,Math.round(a/b*100)) : 0;
+const today = ()  => new Date().toISOString().slice(0,10);
+const daysUntil = d => d ? Math.ceil((new Date(d)-new Date(today()))/86400000) : null;
+const ensureMonth = k => { if(!monthCache[k]) monthCache[k]={income:[],fixed:[],expenses:[]}; };
+const gd = t => { ensureMonth(mkey()); return monthCache[mkey()][t]||[]; };
+const gg = t => globalCache[t]||(t==='cats'?[...DEF_CATS]:t==='savingTargets'?{}:[]);
+const cats = () => { const c=gg('cats'); return c.length?c:[...DEF_CATS]; };
+
+// ── TOTALS ───────────────────────────────────────────────
+const totIncome  = () => gd('income').reduce((s,i)=>s+Number(i.amount),0);
+const totFixed   = () => gd('fixed').reduce((s,i)=>s+Number(i.amount),0);
+const totExp     = () => gd('expenses').reduce((s,i)=>s+Number(i.amount),0);
+const totDebt    = () => gg('debts').reduce((s,d)=>s+Math.max(0,d.total-d.paid),0);
+const totAvail   = () => totIncome()-totFixed()-totExp();           // net balance
+const curTarget  = () => Number((globalCache.savingTargets||{})[mkey()]||0);
+const totFree    = () => Math.max(0, totAvail()-curTarget());       // money after saving
+
+// ── FIRESTORE ────────────────────────────────────────────
+const monthRef  = k => doc(db,'users',currentUser.uid,'months',k);
+const globalRef = () => doc(db,'users',currentUser.uid,'global','data');
+
+let syncT = null;
+function showSync(){
+  const b=document.getElementById('sync-bar');
+  b.classList.add('visible');
+  clearTimeout(syncT);
+  syncT=setTimeout(()=>b.classList.remove('visible'),1200);
+}
+
+async function saveMonth(k){
+  if(!currentUser) return;
+  showSync(); ensureMonth(k);
+  try{ await setDoc(monthRef(k), monthCache[k]); }catch(e){ console.error(e); }
+}
+async function saveGlobal(){
+  if(!currentUser) return;
+  showSync();
+  try{ await setDoc(globalRef(), globalCache); }catch(e){ console.error(e); }
+}
+async function loadMonth(k){
+  if(!currentUser) return;
+  try{ const s=await getDoc(monthRef(k)); if(s.exists()) monthCache[k]=s.data(); else ensureMonth(k); }
+  catch(e){ console.error(e); }
+}
+async function loadGlobal(){
+  if(!currentUser) return;
+  try{
+    const s=await getDoc(globalRef());
+    if(s.exists()){
+      globalCache=s.data();
+      if(!globalCache.debts)globalCache.debts=[];
+      if(!globalCache.cats)globalCache.cats=[];
+      if(!globalCache.savingTargets)globalCache.savingTargets={};
+    }
+  }catch(e){ console.error(e); }
+}
+
+// ── AUTH ─────────────────────────────────────────────────
+window.doLogin = async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  const errEl = document.getElementById('auth-error');
+  const btn   = document.getElementById('login-btn');
+  if(!email||!pass){ errEl.textContent='Please enter email and password.'; return; }
+  errEl.textContent=''; btn.textContent='Please wait…'; btn.disabled=true;
+  try {
+    await setPersistence(auth, browserSessionPersistence);
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    if(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential') {
+      // First time — create account
+      try {
+        await setPersistence(auth, browserSessionPersistence);
+        await createUserWithEmailAndPassword(auth, email, pass);
+      } catch(e2) {
+        errEl.textContent = e2.code==='auth/weak-password'
+          ? 'Password needs at least 6 characters.'
+          : e2.code==='auth/email-already-in-use'
+          ? 'Wrong password. Try again.'
+          : 'Error: '+e2.message;
+        btn.textContent='Sign In'; btn.disabled=false;
+      }
+    } else {
+      errEl.textContent = (e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')
+        ? 'Wrong password. Try again.'
+        : e.code==='auth/too-many-requests'
+        ? 'Too many attempts. Wait a few minutes.'
+        : 'Error: '+e.message;
+      btn.textContent='Sign In'; btn.disabled=false;
+    }
+  }
+};
+
+document.getElementById('auth-pass').addEventListener('keydown', e => {
+  if(e.key==='Enter') window.doLogin();
+});
+
+window.doSignOut = async () => {
+  try {
+    await signOut(auth);
+    monthCache={}; globalCache={debts:[],cats:[],savingTargets:{}};
+    document.getElementById('auth-email').value='';
+    document.getElementById('auth-pass').value='';
+    document.getElementById('auth-error').textContent='';
+    const btn=document.getElementById('login-btn');
+    btn.textContent='Sign In'; btn.disabled=false;
+  } catch(e){ console.error(e); }
+};
+
+onAuthStateChanged(auth, async user => {
+  if(user){
+    currentUser=user;
+    document.getElementById('auth-overlay').style.display='none';
+    document.getElementById('app-loading').style.display='flex';
+    await Promise.all([loadGlobal(), loadMonth(mkey())]);
+    document.getElementById('app-loading').style.display='none';
+    document.getElementById('app-wrapper').style.display='block';
+    updateLabel(); render();
+  } else {
+    currentUser=null; monthCache={}; globalCache={debts:[],cats:[],savingTargets:{}};
+    document.getElementById('app-wrapper').style.display='none';
+    document.getElementById('app-loading').style.display='none';
+    document.getElementById('auth-overlay').style.display='flex';
+  }
+});
+
+// ── NAV ──────────────────────────────────────────────────
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+    render();
+  };
+});
+document.getElementById('prevM').onclick = async()=>{
+  cm--; if(cm<0){cm=11;cy--;} updateLabel(); await loadMonth(mkey()); render();
+};
+document.getElementById('nextM').onclick = async()=>{
+  cm++; if(cm>11){cm=0;cy++;} updateLabel(); await loadMonth(mkey()); render();
+};
+function updateLabel(){ document.getElementById('mLabel').textContent=`${MONTHS[cm]} ${cy}`; }
+
+// ── INCOME ───────────────────────────────────────────────
+window.addIncome = async()=>{
+  const n=document.getElementById('inc-name').value.trim();
+  const a=parseFloat(document.getElementById('inc-amount').value);
+  const t=document.getElementById('inc-type').value;
+  if(!n||!a) return alert('Enter source name and amount.');
+  const k=mkey(); ensureMonth(k);
+  monthCache[k].income.push({id:uid(),name:n,amount:a,type:t});
+  document.getElementById('inc-name').value='';
+  document.getElementById('inc-amount').value='';
+  await saveMonth(k); render();
+};
+window.delIncome = async id=>{
+  const k=mkey(); ensureMonth(k);
+  monthCache[k].income=monthCache[k].income.filter(i=>i.id!==id);
+  await saveMonth(k); render();
+};
+
+// ── FIXED ────────────────────────────────────────────────
+window.addFixed = async()=>{
+  const n=document.getElementById('fix-name').value.trim();
+  const a=parseFloat(document.getElementById('fix-amount').value);
+  const d=document.getElementById('fix-due').value;
+  const c=document.getElementById('fix-cat').value;
+  if(!n||!a) return alert('Enter name and amount.');
+  const k=mkey(); ensureMonth(k);
+  monthCache[k].fixed.push({id:uid(),name:n,amount:a,due:Number(d)||1,cat:c});
+  document.getElementById('fix-name').value='';
+  document.getElementById('fix-amount').value='';
+  document.getElementById('fix-due').value='';
+  await saveMonth(k); render();
+};
+window.delFixed = async id=>{
+  const k=mkey(); ensureMonth(k);
+  monthCache[k].fixed=monthCache[k].fixed.filter(i=>i.id!==id);
+  await saveMonth(k); render();
+};
+
+// ── EXPENSES ─────────────────────────────────────────────
+window.addExpense = async()=>{
+  const desc=document.getElementById('exp-desc').value.trim();
+  const a=parseFloat(document.getElementById('exp-amount').value);
+  const c=document.getElementById('exp-cat').value;
+  const dt=document.getElementById('exp-date').value||today();
+  if(!desc||!a) return alert('Enter description and amount.');
+  const k=mkey(); ensureMonth(k);
+  monthCache[k].expenses.push({id:uid(),desc,amount:a,cat:c,date:dt});
+  document.getElementById('exp-desc').value='';
+  document.getElementById('exp-amount').value='';
+  await saveMonth(k); render();
+};
+window.delExpense = async id=>{
+  const k=mkey(); ensureMonth(k);
+  monthCache[k].expenses=monthCache[k].expenses.filter(i=>i.id!==id);
+  await saveMonth(k); render();
+};
+
+// ── DEBTS ────────────────────────────────────────────────
+window.addDebt = async()=>{
+  const n=document.getElementById('debt-name').value.trim();
+  const t=parseFloat(document.getElementById('debt-total').value)||0;
+  const p=parseFloat(document.getElementById('debt-paid-inp').value)||0;
+  const m=parseFloat(document.getElementById('debt-monthly').value)||0;
+  const dd=document.getElementById('debt-due').value;
+  if(!n||!t) return alert('Enter creditor name and total amount.');
+  if(!globalCache.debts) globalCache.debts=[];
+  globalCache.debts.push({id:uid(),name:n,total:t,paid:p,monthly:m,duedate:dd});
+  ['debt-name','debt-total','debt-paid-inp','debt-monthly','debt-due']
+    .forEach(id=>document.getElementById(id).value='');
+  await saveGlobal(); render();
+};
+window.delDebt = async id=>{
+  globalCache.debts=(globalCache.debts||[]).filter(i=>i.id!==id);
+  await saveGlobal(); render();
+};
+
+// PAY DEBT:
+// Debt payment comes from your existing salary balance — it does NOT add income.
+// It just records how much of the debt you paid, reducing the remaining balance.
+// The money was already counted as income when your salary was logged.
+window.payDebt = async id=>{
+  const d=(globalCache.debts||[]).find(i=>i.id===id);
+  if(!d) return;
+  const rem=Math.max(0,d.total-d.paid);
+  const x=parseFloat(
+    prompt('Pay "'+d.name+'"\nRemaining: '+fmt(rem)+'\n\nEnter amount paid (EGP):')
+  ||0);
+  if(!x||x<=0) return;
+  d.paid=Math.min(d.total, d.paid+x);
+  await saveGlobal();
+  render();
+};
+
+// ── SAVING TARGET ────────────────────────────────────────
+window.saveSavingTarget = async()=>{
+  const val=parseFloat(document.getElementById('save-target-inp').value)||0;
+  if(!globalCache.savingTargets) globalCache.savingTargets={};
+  globalCache.savingTargets[mkey()]=val;
+  document.getElementById('save-target-inp').value='';
+  await saveGlobal(); render();
+};
+
+// ── CATEGORIES ───────────────────────────────────────────
+window.addCat = async()=>{
+  const n=document.getElementById('cat-inp').value.trim(); if(!n) return;
+  const c=cats();
+  if(c.includes(n)) return alert('Category already exists.');
+  c.push(n); globalCache.cats=c;
+  document.getElementById('cat-inp').value='';
+  await saveGlobal(); render();
+};
+window.delCat = async n=>{
+  globalCache.cats=cats().filter(c=>c!==n);
+  await saveGlobal(); render();
+};
+
+// ── RENDER ───────────────────────────────────────────────
+function render(){
+  renderSelects();
+  renderHero();
+  renderDash();
+  renderIncome();
+  renderFixed();
+  renderExpenses();
+  renderDebts();
+  renderSavings();
+  renderCats();
+  renderSummary();
+}
+
+function renderSelects(){
+  const c=cats();
+  ['fix-cat','exp-cat'].forEach(id=>{
+    const s=document.getElementById(id); if(!s) return;
+    const cur=s.value;
+    s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');
+    if(c.includes(cur)) s.value=cur;
+  });
+}
+
+function renderHero(){
+  const inc=totIncome(), fix=totFixed(), exp=totExp();
+  const avail=totAvail(), spent=fix+exp, sp=pct(spent,inc);
+  const target=curTarget(), free=totFree(), debt=totDebt();
+  document.getElementById('hero-avail').textContent=fmt(avail).replace(' EGP','');
+  document.getElementById('hero-pct').textContent=sp+'% of income spent this month';
+  document.getElementById('h-fixed').textContent=fmt(fix).replace(' EGP','');
+  document.getElementById('h-expenses').textContent=fmt(exp).replace(' EGP','');
+  document.getElementById('h-income').textContent=fmt(inc).replace(' EGP','');
+  document.getElementById('h-saving').textContent=target>0?fmt(target).replace(' EGP',''):'—';
+  document.getElementById('h-debt').textContent=fmt(debt).replace(' EGP','');
+  document.getElementById('h-free').textContent=fmt(free).replace(' EGP','');
+  document.getElementById('pill-income').textContent=fmt(inc);
+  document.getElementById('pill-spent').textContent=fmt(spent);
+  document.getElementById('pill-left').textContent=fmt(avail);
+}
+
+function renderDash(){
+  const inc=totIncome(), fix=totFixed(), exp=totExp();
+  const avail=totAvail(), spent=fix+exp, sp=pct(spent,inc);
+  const target=curTarget(), free=totFree();
+  const fc=sp>85?'var(--red)':sp>60?'var(--gold)':'#2D6A4F';
+
+  // Month progress bar
+  document.getElementById('dash-bar').innerHTML=`
+    <div class="prog-lbl"><span>${sp}% spent</span><span>${fmt(spent)} / ${fmt(inc)}</span></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${sp}%;background:${fc}"></div></div>
+    <div style="margin-top:9px;font-size:0.76rem;color:${avail>=0?'#2D6A4F':'var(--red)'}">
+      ${avail>=0?'Remaining: '+fmt(avail):'Overspent by '+fmt(Math.abs(avail))}
+    </div>`;
+
+  // Category bars
+  const allItems=[...gd('expenses'),...gd('fixed')];
+  const catMap={};
+  allItems.forEach(i=>{ catMap[i.cat||'Other']=(catMap[i.cat||'Other']||0)+Number(i.amount); });
+  const maxV=Math.max(...Object.values(catMap),1);
+  document.getElementById('dash-cats').innerHTML=
+    Object.entries(catMap).sort((a,b)=>b[1]-a[1])
+      .map(([c,a])=>`
+        <div class="cat-row">
+          <div class="cat-lbl">${c}</div>
+          <div class="cat-bar-w"><div class="cat-bar-f" style="width:${pct(a,maxV)}%"></div></div>
+          <div class="cat-amt">${fmt(a)}</div>
+        </div>`).join('')
+    || '<div class="empty">No spending data yet.</div>';
+
+  // Saving snapshot
+  const snap=document.getElementById('dash-save-snap');
+  if(target>0){
+    const sp2=pct(Math.min(Math.max(0,avail),target),target);
+    snap.innerHTML=`
+      <div class="save-card" style="margin-top:10px">
+        <div class="save-card-title">Saving Target — ${MONTHS[cm]}</div>
+        <div class="prog-lbl"><span>${sp2}% toward target</span><span>${fmt(target)}</span></div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${sp2}%;background:#2D6A4F"></div></div>
+        <div style="margin-top:8px;font-size:0.76rem;color:${free>0?'#2D6A4F':'var(--text-muted)'}">
+          Free after saving: <strong>${fmt(free)}</strong>
+        </div>
+      </div>`;
+  } else { snap.innerHTML=''; }
+
+  // Alerts
+  const alerts=[];
+  if(inc===0) alerts.push({t:'warn',m:`No income logged for ${MONTHS[cm]}. Add your salary first.`});
+  if(avail<0)  alerts.push({t:'err', m:`Overspent by ${fmt(Math.abs(avail))} this month.`});
+  if(target>0&&avail<target) alerts.push({t:'warn',m:`${fmt(target-Math.max(0,avail))} short of saving target.`});
+  (globalCache.debts||[]).forEach(d=>{
+    const rem=d.total-d.paid; if(rem<=0) return;
+    const days=daysUntil(d.duedate);
+    if(days!==null&&days<=0)  alerts.push({t:'err', m:`Overdue: "${d.name}" — ${fmt(rem)} remaining`});
+    else if(days!==null&&days<=7) alerts.push({t:'warn',m:`Due in ${days} day(s): "${d.name}" — ${fmt(rem)} left`});
+  });
+  document.getElementById('dash-alerts').innerHTML=
+    alerts.map(a=>`<div class="alert ${a.t}">${a.m}</div>`).join('');
+}
+
+function renderIncome(){
+  const l=gd('income');
+  document.getElementById('income-tbody').innerHTML=l.map(i=>`
+    <tr>
+      <td class="td-name">${i.name}</td>
+      <td class="td-sm"><span class="badge cat">${i.type}</span></td>
+      <td class="td-num pos">${fmt(i.amount)}</td>
+      <td class="td-act"><button class="btn outline" onclick="delIncome('${i.id}')">Remove</button></td>
+    </tr>`).join('');
+  document.getElementById('income-empty').style.display=l.length?'none':'block';
+}
+
+function renderFixed(){
+  const l=gd('fixed');
+  document.getElementById('fixed-tbody').innerHTML=l.map(i=>`
+    <tr>
+      <td class="td-name">${i.name}</td>
+      <td class="td-sm"><span class="badge cat" style="font-size:0.6rem">${i.cat||''}</span></td>
+      <td class="td-sm">Day ${i.due}</td>
+      <td class="td-num neg">${fmt(i.amount)}</td>
+      <td class="td-act"><button class="btn outline" onclick="delFixed('${i.id}')">Remove</button></td>
+    </tr>`).join('');
+  document.getElementById('fixed-empty').style.display=l.length?'none':'block';
+}
+
+function renderExpenses(){
+  const l=[...gd('expenses')].sort((a,b)=>b.date.localeCompare(a.date));
+  const tot=l.reduce((s,i)=>s+Number(i.amount),0);
+  document.getElementById('exp-total-lbl').textContent=l.length?'Total: '+fmt(tot):'';
+  document.getElementById('expense-tbody').innerHTML=l.map(i=>`
+    <tr>
+      <td class="td-sm">${i.date}</td>
+      <td class="td-name">${i.desc}</td>
+      <td class="td-sm"><span class="badge cat" style="font-size:0.6rem">${i.cat}</span></td>
+      <td class="td-num neg">${fmt(i.amount)}</td>
+      <td class="td-act"><button class="btn outline" onclick="delExpense('${i.id}')">Remove</button></td>
+    </tr>`).join('');
+  document.getElementById('expense-empty').style.display=l.length?'none':'block';
+  const di=document.getElementById('exp-date'); if(!di.value) di.value=today();
+}
+
+function renderDebts(){
+  const l=globalCache.debts||[];
+  document.getElementById('debt-empty').style.display=l.length?'none':'block';
+  document.getElementById('debt-list').innerHTML=l.map(d=>{
+    const rem=Math.max(0,d.total-d.paid), p=pct(d.paid,d.total);
+    const days=daysUntil(d.duedate);
+    let badge='';
+    if(rem<=0)              badge='<span class="badge paid-b">Paid Off</span>';
+    else if(days!==null&&days<=0)  badge='<span class="badge over">Overdue</span>';
+    else if(days!==null&&days<=7)  badge='<span class="badge due">Due Soon</span>';
+    const fc=p<40?'var(--red)':p<80?'var(--gold)':'#2D6A4F';
+    const ml=d.monthly>0&&rem>0?Math.ceil(rem/d.monthly):null;
+    return `
+    <div class="debt-item">
+      <div class="debt-hd">
+        <div class="debt-name">${d.name} ${badge}</div>
+        <div class="debt-btns">
+          ${rem>0?`<button class="btn sm pay" onclick="payDebt('${d.id}')">Pay</button>`:''}
+          <button class="btn outline" onclick="delDebt('${d.id}')">Remove</button>
+        </div>
+      </div>
+      <div class="debt-meta">
+        Total: ${fmt(d.total)} &nbsp;|&nbsp; Paid: ${fmt(d.paid)} &nbsp;|&nbsp;
+        Remaining: <strong>${fmt(rem)}</strong>
+        ${d.monthly?` &nbsp;|&nbsp; Monthly: ${fmt(d.monthly)}`:''}
+        ${d.duedate?` &nbsp;|&nbsp; Due: ${d.duedate}`:''}
+        ${ml?` &nbsp;|&nbsp; ~${ml} months to clear`:''}
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${fc}"></div></div>
+      <div class="prog-lbl" style="margin-top:3px"><span>${p}% paid</span><span>${fmt(rem)} left</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderSavings(){
+  const target=curTarget(), avail=totAvail(), free=totFree();
+  const actual=Math.min(Math.max(0,avail), target);
+  const sp=pct(actual, target||1);
+  const fillC=sp>=100?'#2D6A4F':sp>=60?'var(--gold)':'var(--red)';
+  const inp=document.getElementById('save-target-inp');
+  if(target>0) inp.placeholder=`Current: ${fmt(target)} — enter new to update`;
+  document.getElementById('save-nums').innerHTML=target>0?`
+    <div class="save-num-box">
+      <div class="save-num-val" style="color:#2D6A4F">${fmt(target).replace(' EGP','')}</div>
+      <div class="save-num-lbl">Target</div>
+    </div>
+    <div class="save-num-box">
+      <div class="save-num-val" style="color:${sp>=100?'#2D6A4F':'var(--gold)'}">${fmt(actual).replace(' EGP','')}</div>
+      <div class="save-num-lbl">Can Save</div>
+    </div>
+    <div class="save-num-box">
+      <div class="save-num-val" style="color:${free>0?'#2D6A4F':'var(--text-muted)'}">${fmt(free).replace(' EGP','')}</div>
+      <div class="save-num-lbl">Free After</div>
+    </div>
+    <div style="grid-column:1/-1;margin-top:4px">
+      <div class="prog-lbl"><span>${sp}% of target covered</span><span>${fmt(Math.max(0,target-actual))} gap</span></div>
+      <div class="prog-bar" style="height:8px"><div class="prog-fill" style="width:${sp}%;background:${fillC}"></div></div>
+    </div>`
+    :'<div class="empty" style="grid-column:1/-1">Set a target above to start tracking.</div>';
+
+  // History
+  const targets=globalCache.savingTargets||{};
+  const rows=Object.entries(targets).sort((a,b)=>b[0].localeCompare(a[0])).map(([k,t])=>{
+    const [yr,mo]=k.split('-'); const mIdx=Number(mo)-1;
+    const cached=monthCache[k];
+    const mInc=cached?(cached.income||[]).reduce((s,i)=>s+Number(i.amount),0):0;
+    const mFix=cached?(cached.fixed||[]).reduce((s,i)=>s+Number(i.amount),0):0;
+    const mExp=cached?(cached.expenses||[]).reduce((s,i)=>s+Number(i.amount),0):0;
+    const mAvail=Math.max(0, mInc-mFix-mExp);
+    const actual2=Math.min(mAvail, t);
+    const met=actual2>=t;
+    return `<tr>
+      <td>${MONTHS[mIdx]} ${yr}</td>
+      <td class="td-num">${fmt(t)}</td>
+      <td class="td-num ${met?'pos':'amb'}">${fmt(actual2)}</td>
+      <td class="td-sm"><span class="badge ${met?'paid-b':'due'}">${met?'Met':'Pending'}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('save-history-tbody').innerHTML=rows;
+  document.getElementById('save-history-empty').style.display=rows?'none':'block';
+}
+
+function renderCats(){
+  const c=cats(), all=[...gd('expenses'),...gd('fixed')];
+  const uc={}; all.forEach(i=>{ uc[i.cat]=(uc[i.cat]||0)+1; });
+  document.getElementById('cat-tbody').innerHTML=c.map(x=>`
+    <tr>
+      <td>${x}</td>
+      <td class="td-sm" style="color:var(--text-muted)">${uc[x]||0} entries</td>
+      <td class="td-act"><button class="btn outline" onclick="delCat('${x}')">Remove</button></td>
+    </tr>`).join('');
+}
+
+function renderSummary(){
+  const inc=totIncome(), fix=totFixed(), exp=totExp();
+  const avail=totAvail(), free=totFree(), target=curTarget();
+  const spent=fix+exp, sp=pct(spent,inc), svp=pct(Math.max(0,avail),inc);
+  const allItems=[...gd('expenses'),...gd('fixed')];
+  const catMap={}; allItems.forEach(i=>{ catMap[i.cat||'Other']=(catMap[i.cat||'Other']||0)+Number(i.amount); });
+  const catRows=Object.entries(catMap).sort((a,b)=>b[1]-a[1])
+    .map(([c,a])=>`<tr><td>${c}</td><td class="neg">${fmt(a)}</td></tr>`).join('');
+
+  document.getElementById('sum-grid').innerHTML=`
+    <div><table>
+      <thead><tr><th>Item</th><th>Amount</th></tr></thead>
+      <tbody>
+        <tr><td>Total Income</td><td class="pos">${fmt(inc)}</td></tr>
+        <tr><td>Fixed</td><td class="neg">${fmt(fix)}</td></tr>
+        <tr><td>Expenses</td><td class="neg">${fmt(exp)}</td></tr>
+        <tr><td>Net Balance</td><td class="${avail>=0?'pos':'neg'}">${fmt(avail)}</td></tr>
+        <tr><td>Saving Target</td><td style="color:#2D6A4F">${target>0?fmt(target):'—'}</td></tr>
+        <tr><td><strong>Free Money</strong></td><td class="${free>=0?'pos':'neg'}"><strong>${fmt(free)}</strong></td></tr>
+      </tbody>
+    </table></div>
+    <div><table>
+      <thead><tr><th>Metric</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>Spend Rate</td><td class="amb">${sp}%</td></tr>
+        <tr><td>Saving Rate</td><td class="pos">${svp}%</td></tr>
+        <tr><td>Transactions</td><td>${allItems.length}</td></tr>
+        <tr><td>Total Debt</td><td class="neg">${fmt(totDebt())}</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px">
+      <div class="prog-lbl"><span>Saving Rate</span><span>${svp}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${svp}%;background:#2D6A4F"></div></div>
+    </div></div>
+    ${catRows?`<div style="grid-column:1/-1;margin-top:4px"><table>
+      <thead><tr><th>Category</th><th>Total</th></tr></thead>
+      <tbody>${catRows}</tbody>
+    </table></div>`:''}`;
+
+  // Saving overview
+  const actual=Math.min(Math.max(0,avail),target);
+  document.getElementById('sum-saving').innerHTML=target>0?`
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:0.8rem;margin-bottom:10px">
+      <span>Target: <strong style="color:#2D6A4F">${fmt(target)}</strong></span>
+      <span>Can Save: <strong>${fmt(actual)}</strong></span>
+      <span>Free: <strong class="${free>0?'pos':'neg'}">${fmt(free)}</strong></span>
+    </div>
+    <div class="prog-bar" style="height:8px">
+      <div class="prog-fill" style="width:${pct(actual,target)}%;background:#2D6A4F"></div>
+    </div>`
+    :'<div class="empty">No saving target set. Go to the Savings tab.</div>';
+
+  // Debt overview
+  const debts=globalCache.debts||[];
+  const totD=debts.reduce((s,d)=>s+Math.max(0,d.total-d.paid),0);
+  document.getElementById('sum-debts').innerHTML=debts.length?`
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px">
+      Total outstanding: <strong class="neg">${fmt(totD)}</strong>
+    </p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Creditor</th><th class="td-num">Remaining</th><th style="min-width:80px">Progress</th></tr></thead>
+      <tbody>${debts.map(d=>{
+        const rem=Math.max(0,d.total-d.paid), p=pct(d.paid,d.total);
+        const fc=p<50?'var(--red)':p<80?'var(--gold)':'#2D6A4F';
+        return `<tr>
+          <td class="td-name">${d.name}</td>
+          <td class="td-num ${rem<=0?'pos':'neg'}">${rem<=0?'Cleared':fmt(rem)}</td>
+          <td><div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${fc}"></div></div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`
+    :'<div class="empty">No debts recorded.</div>';
+}
+</script>
+</body>
+</html>
